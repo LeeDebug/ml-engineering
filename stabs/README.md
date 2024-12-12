@@ -1,3 +1,3 @@
-# Stabs
+# 刺刺
 
-Some very early notes on various topics, not meant for reading or fixing. Please ignore this sub-dir.
+一些非常早期的各种主题的笔记，不是用于阅读或修复的。请忽略这个子目录。

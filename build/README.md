@@ -1,53 +1,48 @@
-# Book Building
+# 出版建设
 
-Important: this is still a WIP - it mostly works, but stylesheets need some work to make the pdf really nice. Should be complete in a few weeks.
+重要提示：这仍处于开发中——大部分功能已经实现，但样式表需要改进以使PDF更加美观。预计几周内完成。
 
-This document assumes you're working from the root of the repo.
+此文档假设你从仓库的根目录进行操作。
 
-## Installation requirements
+## 安装要求
 
-1. Install python packages used during book build
-```
-pip install -r build/requirements.txt
-```
+1. 安装构建书籍时使用的Python包
+   ```sh
+   pip install -r build/requirements.txt
+   ```
 
-2. Download the free version of [Prince XML](https://www.princexml.com/download/). It's used to build the pdf version of this book.
+2. 下载免费版本的[Prince XML](https://www.princexml.com/download/)。它用于生成这本书的PDF版本。
 
+## 构建HTML
 
-## Build html
-
-```
+```sh
 make html
 ```
 
-## Build pdf
+## 构建PDF
 
-```
+```sh
 make pdf
 ```
 
-It will first build the html target and then will use it to build the pdf version.
+它会首先构建HTML目标，然后使用该目标来构建PDF版本。
 
+## 检查链接和锚点
 
-## Check links and anchors
-
-To validate that all local links and anchored links are valid run:
-```
+要验证所有本地链接和锚定链接的有效性，请运行：
+```sh
 make check-links-local
 ```
 
-To additionally also check external links
-```
+ 若要同时检查外部链接（请谨慎使用以避免服务器被频繁请求而封禁）：
+```sh
 make check-links-all
 ```
-use the latter sparingly to avoid being banned for hammering servers.
 
+## 移动md文件/目录并调整相对链接
 
-## Move md files/dirs and adjust relative links
-
-
-e.g. `slurm` => `orchestration/slurm`
-```
+例如，将 `slurm` 移到 `orchestration/slurm`
+```sh
 src=slurm
 dst=orchestration/slurm
 
@@ -57,13 +52,11 @@ perl -pi -e "s|$src|$dst|" chapters-md.txt
 python build/mdbook/mv-links.py $src $dst
 git checkout $dst
 make check-links-local
-
 ```
 
-## Resize images
+## 调整图片大小
 
-When included images are too large, make them smaller a bit:
-
-```
+当包含的图片过大时，可以稍微调整它们的大小：
+```sh
 mogrify -format png -resize 1024x1024\> *png
 ```

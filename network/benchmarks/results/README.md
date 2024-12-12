@@ -1,3 +1,3 @@
-# Network Benchmarks Results
+# 网络基准测试结果
 
-- [Disabling NVLink](disable-nvlink.md)
+- [禁用 NVLink](disable-nvlink.md)

@@ -1,10 +1,10 @@
-# AMD GPUs Performance
+# AMD GPU 性能
 
-As I haven't had a chance to do any serious work with AMD GPUs, just sharing links for now.
+由于我还没有机会认真使用AMD GPU，目前只是分享一些链接。
 
-- [AMD Instinct MI300X system optimization](https://rocm.docs.amd.com/en/latest/how-to/system-optimization/mi300x.html)
-- [AMD Instinct MI300X workload optimization](https://rocm.docs.amd.com/en/latest/how-to/tuning-guides/mi300x/workload.html)
+- [AMD Instinct MI300X 系统优化](https://rocm.docs.amd.com/zh/latest/how-to/system-optimization/mi300x.html)
+- [AMD Instinct MI300X 工作负载优化](https://rocm.docs.amd.com/zh/latest/how-to/tuning-guides/mi300x/workload.html)
 
-## Profilers
+## 性能分析器
 
-[omniperf](https://github.com/ROCm/omniperf) - Advanced Profiling and Analytics for AMD Hardware - e.g. can plot a roofline performance of your AMD accelerator and many other things.
+[omniperf](https://github.com/ROCm/omniperf) - 高级性能分析和分析工具，适用于AMD硬件 - 例如，可以绘制您AMD加速器的roofline性能，并进行许多其他操作。

@@ -1,3 +1,5 @@
-# NCCL: Debug and Performance
+当然，以下是翻译结果：
 
-moved to [Network Debug](../network/debug).
+# NCCL：调试与性能
+
+相关内容已移至 [网络调试](../network/debug)。

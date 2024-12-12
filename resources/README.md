@@ -1,62 +1,54 @@
-# Resources
+# 资源
 
-## Useful compilations
+## 有用的资料汇总
 
-- [@StellaAthena](https://github.com/StellaAthena) created the [Common LLM Settings spreadsheet](https://docs.google.com/spreadsheets/d/14vbBbuRMEHoqeuMHkTfw3uiZVmyXNuoSp8s-aHvfvZk/edit#gid=0) which can be a super-useful resource when you're about to embark on a new LLM training - as it tells you how many known LLM trainings were created.
+- [@StellaAthena](https://github.com/StellaAthena) 创建了[Common LLM Settings 表格](https://docs.google.com/spreadsheets/d/14vbBbuRMEHoqeuMHkTfw3uiZVmyXNuoSp8s-aHvfvZk/edit#gid=0)，在你即将开始新的LLM训练时，这可以是一个超级有用的资源——因为它告诉你已经创建了多少已知的LLM训练。
 
-- A few years back I started compiling information on [which dtype the models were trained in](https://discuss.huggingface.co/t/model-pre-training-precision-database-fp16-fp32-bf16/5671) - it only contains a handful of models but if you're doing a research on dtypes it can still be useful. I was using this information to try and write [a model pretraining dtype auto-detection](https://github.com/stas00/ml-ways/blob/master/numbers/detect-model-pretrained-in-bf16-fp16-fp32.ipynb) and here is a related [float16 vs bfloat16 numerical properties comparison](https://github.com/stas00/ml-ways/blob/master/numbers/bfloat16-vs-float16-study.ipynb).
+- 几年前我开始整理有关模型训练数据类型的信息[（链接）](https://discuss.huggingface.co/t/model-pre-training-precision-database-fp16-fp32-bf16/5671) - 它仅包含少量模型，但如果你在进行关于数据类型的科研工作，它仍然可能很有用。我使用这些信息来尝试编写[一个模型预训练数据类型自动检测工具](https://github.com/stas00/ml-ways/blob/master/numbers/detect-model-pretrained-in-bf16-fp16-fp32.ipynb)，这里还有一个有关 [float16 vs bfloat16 数值属性比较的研究](https://github.com/stas00/ml-ways/blob/master/numbers/bfloat16-vs-float16-study.ipynb)。
 
-## Publicly available training LLM/VLM logbooks
+## 公开可用的训练LLM/VLM日志
 
-Logbooks and chronicles of training LLM/VLM are one of the best sources to learn from about dealing with training instabilities and choosing good hyper parameters.
+训练LLM/VLM的日志和纪要是了解处理训练不稳定性及选择良好超参数的最佳来源之一。
 
-If you know of a public LLM/VLM training logbook that is not on this list please kindly let me know or add it via a PR. Thank you!
+如果你知道有不在本列表中的公开LLM/VLM训练日志，请告知我或通过PR添加。感谢！
 
-The listing is in no particular order other than being grouped by the year.
+按年份分组，但不分特定顺序：
 
 ### 2021
 
-- BigScience pre-BLOOM 108B training experiments (2021):
-[chronicles](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr8-104B-wide/chronicles.md) |
-[the full spec and discussions](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr8-104B-wide)
-(backup:
+- BigScience预BLOOM 108B训练实验（2021）：
+[纪事](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr8-104B-wide/chronicles.md) |
+[完整规格和讨论](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr8-104B-wide)
+（备份：
 [1](https://github.com/stas00/bigscience-backup/blob/master/train/tr8-104B-wide/chronicles.md) |
-[2](https://github.com/stas00/bigscience-backup/blob/master/train/tr8-104B-wide))
-
+[2](https://github.com/stas00/bigscience-backup/blob/master/train/tr8-104B-wide)）
 
 ### 2022
 
-- BigScience BLOOM-176B (2022):
-[chronicles-prequel](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles-prequel.md) |
-[chronicles](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles.md) |
-[the full spec and discussions](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/)
-(backup:
+- BigScience BLOOM-176B（2022）：
+[纪事前传](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles-prequel.md) |
+[纪事](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles.md) （备份：
 [1](https://github.com/stas00/bigscience-backup/blob/master/train/tr11-176B-ml/chronicles-prequel.md) |
-[2](https://github.com/stas00/bigscience-backup/blob/master/train/tr11-176B-ml/chronicles.md) |
-[3](https://github.com/stas00/bigscience-backup/blob/master/train/tr11-176B-ml/))
+[2](https://github.com/stas00/bigscience-backup/blob/master/train/tr11-176B-ml/chronicles.md))
 
-- Meta OPT-175B (2022):
- [logbook](https://github.com/facebookresearch/metaseq/tree/main/projects/OPT/chronicles) | [Video](https://www.youtube.com/watch?v=p9IxoSkvZ-M) (backup: [1](https://github.com/stas00/metaseq-backup/tree/main/projects/OPT/chronicles))
-
-- THUDM GLM-130B (2022): [en logbook](https://github.com/THUDM/GLM-130B/blob/main/logs/main-log-en.md) | [Mandarin version](https://github.com/THUDM/GLM-130B/blob/main/logs/main-log.md) (backup:  [1](https://github.com/stas00/GLM-130B-backup/blob/main/logs/main-log-en.md) | [2](https://github.com/stas00/GLM-130B-backup/blob/main/logs/main-log.md))
-
+- BloombergGPT 50B LLM - 在《[BloombergGPT：一个用于金融的大型语言模型](https://arxiv.org/abs/2303.17564)》一文中的部分C
 
 ### 2023
 
-- HuggingFace IDEFICS-80B multimodal (Flamingo repro) (2023): [Learning log](https://github.com/huggingface/m4-logs/blob/master/memos/README.md) | [Training Chronicles](https://github.com/huggingface/m4-logs/blob/master/tr-190-80b/chronicles.md) (backup: [1](https://github.com/stas00/m4-logs-backup/blob/master/memos/README.md) | [2](https://github.com/stas00/m4-logs-backup/blob/master/tr-190-80b/chronicles.md))
+- HuggingFace IDEFICS-80B多模态（Flamingo复现）（2023）：
+[学习日志](https://github.com/huggingface/m4-logs/blob/master/memos/README.md) |
+[训练纪事](https://github.com/huggingface/m4-logs/blob/master/tr-190-80b/chronicles.md) （备份：
+[1](https://github.com/stas00/m4-logs-backup/blob/master/memos/README.md) |
+[2](https://github.com/stas00/m4-logs-backup/blob/master/tr-190-80b/chronicles.md))
 
-- BloombergGPT 50B LLM - section C in [BloombergGPT: A Large Language Model for Finance](https://arxiv.org/abs/2303.17564)
-
+- BloombergGPT 50B LLM - 在《[BloombergGPT：一个用于金融的大型语言模型](https://arxiv.org/abs/2303.17564)》一文中的部分C
 
 ### 2024
 
-- [MegaScale: Scaling Large Language Model Training to More Than 10,000 GPUs](https://arxiv.org/abs/2402.15627) - the paper covers various training issues and their resolution - albeit on models that are proprietary yet just as instructional/useful.
+- [MegaScale: 将大规模语言模型训练扩展到超过10,000个GPU](https://arxiv.org/abs/2402.15627) - 这篇文章涵盖了各种训练问题及其解决方案——尽管是在专有的模型上进行的，但同样具有教育和实用价值。
 
-- Imbue's [From bare metal to a 70B model: infrastructure set-up and scripts](https://imbue.com/research/70b-infrastructure/) very detailed technical post covers many training-related issues that they had to overcome while training a proprietary 70B-param model.
+- Imbue 的[从裸金属到70B模型：基础设施配置与脚本](https://imbue.com/research/70b-infrastructure/) 非常详细的技术文章涵盖了他们在训练一个专用的70亿参数模型时必须克服的许多训练相关问题。
 
+## 硬件设置日志
 
-
-
-## Hardware setup logbooks
-
-- Imbue published a detailed log of how they have set up a 512-node IB-fat-tree cluster and made it to work: [From bare metal to a 70B model: infrastructure set-up and scripts](https://imbue.com/research/70b-infrastructure/), they also open-sourced the [cluster tooling](https://github.com/imbue-ai/cluster-health) they created in the process.
+- Imbue 公布了他们如何搭建一个包含512节点IB胖树集群并使其正常运行的详细记录：[从裸金属到70B模型：基础设施配置与脚本](https://imbue.com/research/70b-infrastructure/)，他们在过程中还开源了自己创建的[集群工具](https://github.com/imbue-ai/cluster-health)。

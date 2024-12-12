@@ -1,7 +1,7 @@
-# Compute
+# 计算
 
-1. **[Accelerator](accelerator)** - the work horses of ML - GPUs, TPUs, IPUs, FPGAs, HPUs, QPUs, RDUs (WIP)
+1. **[加速器](accelerator)** - 机器学习的马车夫——GPU、TPU、IPU、FPGA、HPU、QPU、RDU（持续更新中）
 
-1. **[CPU](cpu)** - cpus, affinities (WIP)
+1. **[CPU](cpu)** - CPU、亲和性（持续更新中）
 
-1. **[CPU Memory](cpu-memory)** - how much CPU memory is enough - the shortest chapter ever.
+1. **[CPU内存](cpu-memory)** - 够用的CPU内存是多少——最短的一章。

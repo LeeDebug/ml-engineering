@@ -1,27 +1,26 @@
-# SLURM Administration
+# SLURM 管理
 
+## 在多个节点上运行命令
 
-## Run a command on multiple nodes
+1. 为了避免每次连接到尚未登录的新节点时被提示：
+   ```plaintext
+   Are you sure you want to continue connecting (yes/no/[fingerprint])?
+   ```
+   您可以禁用此检查，方法是将以下内容添加到 `~/.ssh/config` 文件中：
+   ```plaintext
+   Host *
+     StrictHostKeyChecking no
+   ```
 
-1. to avoid being prompted with:
-```
-Are you sure you want to continue connecting (yes/no/[fingerprint])?
-```
-for every new node you haven't logged into yet, you can disable this check with:
-```
-echo "Host *" >> ~/.ssh/config
-echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-```
+当然，请确保这足够安全以满足您的需求。假设您已经位于 SLURM 集群，并且不会通过集群之外进行 SSH 连接。您可以选择不设置此操作，然后每次连接到新节点时都需要手动确认。
 
-Of course, check if that's secure enough for your needs. I'm making an assumption that you're already on the SLURM cluster and you're not ssh'ing outside of your cluster. You can choose not to set this and then you will have to manually approve each new node.
+2. 安装 `pdsh`。
 
-2. Install `pdsh`
+现在可以对多个节点运行所需命令了。
 
-You can now run the wanted command on multiple nodes.
+例如，让我们来运行 `date` 命令：
 
-For example, let's run `date`:
-
-```
+```bash
 $ PDSH_RCMD_TYPE=ssh pdsh -w node-[21,23-26] date
 node-25: Sat Oct 14 02:10:01 UTC 2023
 node-21: Sat Oct 14 02:10:02 UTC 2023
@@ -30,111 +29,100 @@ node-24: Sat Oct 14 02:10:02 UTC 2023
 node-26: Sat Oct 14 02:10:02 UTC 2023
 ```
 
-Let's do something more useful and complex. Let's kill all GPU-tied processes that didn't exit when the SLURM job was cancelled:
+让我们来做些更有用且更复杂的操作。假设当 SLURM 作业被取消时，我们需要杀死所有未退出的 GPU 关联进程：
 
-First, this command will give us all process ids that tie up the GPUs:
+首先，这个命令将提供所有占用 GPU 的进程 ID：
 
-```
+```bash
 nvidia-smi --query-compute-apps=pid --format=csv,noheader | sort | uniq
 ```
 
-So we can now kill all those processes in one swoop:
+因此我们可以一次性杀死这些进程：
 
+```bash
+PDSH_RCMD_TYPE=ssh pdsh -w node-[21,23-26] "nvidia-smi --query-compute-apps=pid --format=csv,noheader | sort | uniq | xargs -n1 sudo kill -9"
 ```
- PDSH_RCMD_TYPE=ssh pdsh -w node-[21,23-26]  "nvidia-smi --query-compute-apps=pid --format=csv,noheader | sort | uniq | xargs -n1 sudo kill -9"
-```
 
+## SLURM 配置
 
-## Slurm settings
+显示 SLURM 的配置设置：
 
-Show the slurm settings:
-
-```
+```bash
 sudo scontrol show config
 ```
 
-The config file is `/etc/slurm/slurm.conf` on the slurm controller node.
+该配置文件位于控制节点上的 `/etc/slurm/slurm.conf`。
 
-Once `slurm.conf` was updated to reload the config run:
-```
+一旦更新了 `slurm.conf` 文件并重新加载配置，请从控制器节点运行以下命令：
+```bash
 sudo scontrol reconfigure
 ```
-from the controller node.
 
+## 自动重启
 
+如果需要安全地重启节点（例如，镜像已更新），则可以调整节点列表并运行：
 
-## Auto-reboot
-
-If the nodes need to be rebooted safely (e.g. if the image has been updated), adapt the list of the node and run:
-
-```
+```bash
 scontrol reboot ASAP node-[1-64]
 ```
 
-For each of the non-idle nodes this command will wait till the current job ends, then reboot the node and bring it back up to `idle`.
+对于每个非空闲节点，此命令将在当前作业结束时等待，然后重新启动该节点并将状态恢复为 `idle`。
 
-Note that you need to have:
-```
+注意，您需要在控制器节点上的 `/etc/slurm/slurm.conf` 中设置：
+```plaintext
 RebootProgram = "/sbin/reboot"
 ```
-set in `/etc/slurm/slurm.conf` on the controller node for this to work (and reconfigure the SLURM daemon if you have just added this entry to the config file).
+并如果刚添加了此条目到配置文件，请重新配置 SLURM 服务。
 
+## 更改节点的状态
 
-## Changing the state of the node
+更改由 `scontrol update` 执行。
 
-The change is performed by `scontrol update`
+示例：
 
-Examples:
-
-To undrain a node that is ready to be used:
-```
+将一个已准备好使用的节点从 `drain` 状态改为 `idle`：
+```bash
 scontrol update nodename=node-5 state=idle
 ```
 
-To remove a node from the SLURM's pool:
-```
+将节点从 SLURM 的资源池中移除：
+```bash
 scontrol update nodename=node-5 state=drain
 ```
 
+## 自动取消由于进程退出缓慢导致的节点隔离
 
-## Undrain nodes killed due to slow process exit
+有时当作业被取消时，进程会很慢地退出。如果 SLURM 配置为不会无限等待，它将自动对这些节点进行隔离。但是，这些节点没有理由不再可供用户使用。
 
-Sometimes processes are slow to exit when a job has been cancelled. If the SLURM was configured not to wait forever it'll automatically drain such nodes. But there is no reason for those nodes to not be available to the users.
+因此这里是如何自动化此过程的方法：
 
-So here is how to automate it.
-
-The keys is to get the list of nodes that are drained due to `"Kill task failed"`, which is retrieved with:
-
-```
-sinfo -R | grep "Kill task failed"
-```
-
-now extract and expand the list of nodes, check that the nodes are indeed user-process free (or try to kill them first) and then undrain them.
-
-Earlier you learned how to [run a command on multiple nodes](#run-a-command-on-multiple-nodes) which we will use in this script.
-
-Here is the script that does all that work for you: [undrain-good-nodes.sh](./undrain-good-nodes.sh)
-
-Now you can just run this script and any nodes that are basically ready to serve but are currently drained will be switched to `idle` state and become available for the users to be used.
-
-
-## Modify a job's timelimit
-
-To set a new timelimit on a job, e.g., 2 days:
-```
-scontrol update JobID=$SLURM_JOB_ID TimeLimit=2-00:00:00
-```
-
-To add additional time to the previous setting, e.g. 3 more hours.
-```
-scontrol update JobID=$SLURM_JOB_ID TimeLimit=+10:00:00
-```
-
-## When something goes wrong with SLURM
-
-Analyze the events log in the SLURM's log file:
-```
+分析 SLURM 日志文件中的事件日志：
+```bash
 sudo cat /var/log/slurm/slurmctld.log
 ```
 
-This, for example, can help to understand why a certain node got its jobs cancelled before time or the node got removed completely.
+例如，这可以帮助理解为什么某些节点的作业在规定时间之前被取消或节点完全被移除的原因。
+
+
+## 修改作业的时间限制
+
+要设置一个新的时间限制（例如2天）：
+
+```bash
+scontrol update JobID=$SLURM_JOB_ID TimeLimit=2-00:00:00
+```
+
+要在先前设置的基础上增加更多时间（例如3个小时）：
+
+```bash
+scontrol update JobID=$SLURM_JOB_ID TimeLimit=+10:00:00
+```
+
+## SLURM 出现问题时的处理
+
+分析 SLURM 日志文件中的事件日志：
+```bash
+sudo cat /var/log/slurm/slurmctld.log
+```
+
+这可以例如帮助理解为什么某个节点的作业在规定时间之前被取消或节点完全被移除的原因。

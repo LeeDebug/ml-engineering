@@ -1,83 +1,64 @@
-# Avoiding, Recovering From and Understanding Instabilities
+# 避免、恢复和理解不稳定性
 
-Sub-sections:
+子部分：
 
-* [Understanding Training Loss Patterns](training-loss-patterns.md) - types of spikes, divergences, grokking moments, resumes, etc.
+* [理解训练损失模式](training-loss-patterns.md) - 包括尖峰、发散、悟性时刻、恢复等类型。
 
-## Learning from Training Logbooks
+## 从训练日志中学习
 
-The best learning is to read [Publicly available training LLM/VLM logbooks](../../resources#publicly-available-training-llmvlm-logbooks) because there you can see exactly what happened and how the problem has been overcome.
+最好的学习是阅读[公开的LLM/VLM训练日志本](../../resources#publicly-available-training-llmvlm-logbooks)，因为在其中可以看到具体发生了什么以及是如何克服问题的。
 
+## STD 初始化
 
-## STD Init
+正确初始化张量的初始分布对训练的稳定性有着巨大的影响。`std` 值不是固定的，它取决于隐藏维度大小。
 
-Correctly initializing the initial distribution of the tensors can have a tremendous impact on training's stability. The `std` value isn't fixed and depends on the hidden dimension size.
+这在我们预BLOOM 104B实验中证明是一个非常关键的设置：直到我们发现默认的 `--init-method-std` 在Megatron-LM中的值0.02对于我们的模型来说太大了，我们无法突破最初的几千次迭代。
 
-This proved to be a very crucial setting in our pre-BLOOM 104B experiments and we couldn't break past the first few thousands iterations until we figured out that the 0.02 default `--init-method-std` in Megatron-LM was a way too big for our model.
+我们参考了以下这两篇资料：
 
-We referred to these two sources:
+1. "Transformers without Tears" 研究论文 https://arxiv.org/abs/1910.05895 推荐：`sqrt(2/(NHIDDEN*5))`
 
-1. "Transformers without Tears" paper https://arxiv.org/abs/1910.05895 prescribes: `sqrt(2/(NHIDDEN*5))`
+2. 530B模型的训练论文 https://arxiv.org/abs/2201.11990，他们使用了更小的初始化公式: `sqrt(1/(NHIDDEN*3))`
 
-2. The 530B training paper https://arxiv.org/abs/2201.11990 they used an even smaller init formula: `sqrt(1/(NHIDDEN*3))`
+我们选择了后者，因为它的初始值更小。
 
-and decided to go with the 530B one as it leads to an even smaller init value.
-
-To make it easier to compare the two formulas, they can be rewritten as:
+为了让这两个公式的比较更为直观，可以将它们重写为：
 1. `sqrt(0.4000/NHIDDEN)`
 2. `sqrt(0.3333/NHIDDEN)`
 
-Thus for `NHIDDEN=14336` the math was `sqrt(1/(14336*3)) = 0.00482` and that's what we used. It surely wasn't the only reason why we had no stability issues during BLOOM-176B training, but I think it was one of the crucial ones.
+因此对于 `NHIDDEN=14336` 的情况，计算结果为 `sqrt(1/(14336*3)) = 0.00482`。这就是我们使用的值。这绝对不是BLOOM-176B训练过程中没有出现稳定性问题的唯一原因，但我认为这是非常关键的原因之一。
 
+## 数值不稳定性
 
-## Numerical instabilities
+某些数学运算在处理低精度数字时可能会变得不稳定。
 
-Certain mathematical operations could be unstable when dealing with low precision numbers.
+例如，请参阅这个非常有趣的 [PyTorch数值稳定性指南](https://pytorch.org/docs/stable/notes/numerical_accuracy.html)。
 
-For example, please see this very interesting [PyTorch guide on numerical stability](https://pytorch.org/docs/stable/notes/numerical_accuracy.html).
+现在我们来看一个具体的例子，展示这一概念的实际应用。
 
-Now let's look at a specific example of this concept in action.
+在使用 fp16 混合精度训练 104B 模型的过程中，[Corby Rosset](https://github.com/corbyrosset) 提出了一项改进措施，旨在使 [自注意力机制] 更加稳定。具体内容如下：
 
-During 104B training experiments where fp16 mixed precision was used - the following improvement was proposed by [Corby Rosset](https://github.com/corbyrosset) to make [self-attention more stable](https://github.com/bigscience-workshop/Megatron-DeepSpeed/pull/118).
+具体来看，代码中的这一行展示了 `norm_factor` 可能在查询 * 关键矩阵乘法之后被相乘的情况。如果 Q 和 K 的维度非常大，输出可能会变得过大，从而使 `norm_factor` 无法挽救。
 
-Specifically this [line](https://github.com/bigscience-workshop/Megatron-DeepSpeed/blob/c839a8aa30731f71b3738d56009be9668508e366/megatron/model/transformer.py#L303) shows that the `norm_factor` may be multiplied after the Query * Key matrix multiplication. If the dim of Q and K are very large, the output may blow up and the `norm_factor` won't be able to save it.
-
-Proposal: move the `norm_factor` inward, so Q and K are scaled down before matrix multiply:
-```
+提议：将 `norm_factor` 内移，即在矩阵相乘前对 Q 和 K 进行缩放：
+```python
         matmul_result = torch.baddbmm(
             matmul_result,
             1.0/math.sqrt(self.norm_factor) * query_layer.transpose(0, 1),   # [b * np, sq, hn]
             1.0/math.sqrt(self.norm_factor) * key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-            beta=0.0 if alibi is None else 1.0, alpha=1.0)
-
-        # change view to [b, np, sq, sk]
-        attention_scores = matmul_result.view(*output_size)
-```
-
-To make the operation mathematically equivalent, moving the norm factor inward requires taking sqrt again
-if n is a scalar, A and B matrices:
-```
-n * (A dot B) === (sqrt(n) * A) dot (sqrt(n) * B)
-```
-
-Now A and B dimensions can be significantly larger.
-
-For CUDA kernel writers [CuBlas](https://docs.nvidia.com/cuda/cublas/index.html)'s `GemmStridedBatchedEx` at the time of this writing has a similar issue. It is defined as:
+            beta=0.0 if alibi is None else 1.0, C=matmul_result
+        )
 
 ```
-C+i*strideC=αop(A+i*strideA)op(B+i*strideB)+β(C+i*strideC), for i ∈[0,batchCount−1]
-```
 
-The issue is that `alpha` is multiplied after the matrix-matrix multiplication is done so it can cause instability.
+这样做的目的是在矩阵相乘之前应用 `norm_factor`。
 
-## "Bad" combination of data batch and model parameter state
+## 数据批次和模型参数状态的“不良”组合
 
-PaLM team observed dozens of loss spikes at "highly irregular intervals" when training larger models. While they were not able to track down the root cause, they mitigated the issue by restarting from an earlier checkpoint and skipping potentially problematic data batches. [Section 5.1 Training instability](https://arxiv.org/pdf/2204.02311.pdf)
+PaLM 团队观察到，在训练更大规模模型时，损失会在“高度不规则的时间间隔”出现尖峰。虽然他们未能追踪到根本原因，但他们通过从较早的检查点重新开始并跳过可能存在问题的数据批次来缓解了这个问题。[第5.1节 训练不稳定性](https://arxiv.org/pdf/2204.02311.pdf)
 
+## Adam 中的时间域相关性发散
 
-## Time-domain correlation divergence in Adam
+一篇名为 [关于大规模机器学习中 Adam 不稳定性的理论](https://arxiv.org/abs/2304.09871) 的研究对在高达546B参数下训练LLMs时的发散尖峰进行了严格的研究，并建议时间域相关性会导致Adam发散。这由epsilon值不够小触发，梯度估计分量变得类似于epsilon。
 
-[A Theory on Adam Instability in Large-Scale Machine Learning](https://arxiv.org/abs/2304.09871) performs a rigorous study of divergence spikes while training LLMs at up to 546B parameters - and suggests that the time-domain correlation leads to divergence of Adam. This is triggered by the epsilon value not being small enough and gradient
-estimation components become similar to the epsilon.
-
-In section 7.1 they propose practical suggestions, the most interesting one of them is setting epsilon to 0 and possibly dealing with division by zero condition.
+在第7.1节中，他们提出了实用建议，其中最有趣的一条是将epsilon设置为0，并可能处理除零条件。

@@ -1,14 +1,14 @@
-# Single and Multi-node Launchers with SLURM
+# 使用 SLURM 的单节点和多节点启动脚本
 
-The following are complete SLURM scripts that demonstrate how to integrate various launchers with software that uses `torch.distributed` (but should be easily adaptable to other distributed environments).
+以下是一些完整的 SLURM 脚本，展示了如何将各种启动器与使用 `torch.distributed` 的软件集成（这些脚本也应易于适应其他分布式环境）。
 
-- [torchrun](torchrun-launcher.slurm) - to be used with [PyTorch distributed](https://github.com/pytorch/pytorch).
-- [accelerate](accelerate-launcher.slurm) - to be used with [HF Accelerate](https://github.com/huggingface/accelerate).
-- [lightning](lightning-launcher.slurm) - to be used with [Lightning](https://lightning.ai/) (“PyTorch Lightning” and “Lightning Fabric”).
-- [srun](srun-launcher.slurm) - to be used with the native SLURM launcher - here we have to manually preset env vars that `torch.distributed` expects.
+- [torchrun](torchrun-launcher.slurm) - 用于配合 [PyTorch 分布式](https://github.com/pytorch/pytorch)。
+- [accelerate](accelerate-launcher.slurm) - 用于配合 [HF Accelerate](https://github.com/huggingface/accelerate)。
+- [lightning](lightning-launcher.slurm) - 用于配合 [Lightning](https://lightning.ai/)（“PyTorch Lightning” 和 “Lightning Fabric”）。
+- [srun](srun-launcher.slurm) - 用于配合原生的 SLURM 启动器 - 在这里，我们需要手动设置 `torch.distributed` 预期的环境变量。
 
-All of these scripts use [torch-distributed-gpu-test.py](../../../debug/torch-distributed-gpu-test.py) as the demo script, which you can copy here with just:
-```
+所有这些脚本都使用了 [torch-distributed-gpu-test.py](../../../debug/torch-distributed-gpu-test.py) 作为示例脚本，你可以通过以下命令将其复制到这里：
+```shell
 cp ../../../debug/torch-distributed-gpu-test.py .
 ```
-assuming you cloned this repo. But you can replace it with anything else you need.
+假设你已经克隆了这个仓库。但你可以用你需要的其他任何内容来替换它。

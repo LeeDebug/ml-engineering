@@ -1,118 +1,94 @@
-# Tensor precision / Data types
+# 张量精度 / 数据类型
 
-These are the common datatypes that are used as of this writing in ML (usually referred to as `dtype`):
+以下是截至当前在机器学习（ML）中常用的常见数据类型，通常称为 `dtype`：
 
-Floating point formats:
-- fp32 - 32 bits
-- tf32 - 19 bits (NVIDIA Ampere+)
-- fp16 - 16 bits
-- bf16 - 16 bits
-- fp8 - 8 bits (E4M3 and E5M2 formats)
+浮点格式：
+- fp32 - 32位
+- tf32 - 19位（NVIDIA Ampere+）
+- fp16 - 16位
+- bf16 - 16位
+- fp8 - 8位（E4M3 和 E5M2 格式）
 
-For visual comparison refer to this representations:
+为了进行视觉对比，请参阅以下表示：
 
 ![fp32-tf32-fp16-bf16](images/fp32-tf32-fp16-bf16.png)
 
-([source](https://developer.nvidia.com/blog/accelerating-ai-training-with-tf32-tensor-cores/))
+([来源](https://developer.nvidia.com/blog/accelerating-ai-training-with-tf32-tensor-cores/))
 
 ![fp16-bf16-fp8](images/fp16-bf16-fp8.png)
 
-([source](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html))
+([来源](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html))
 
-Integer formats used in quantization:
+用于量化时使用的整数格式：
 
-- int8 - 8 bits
-- int4 - 4 bits
-- int1 - 1 bits
+- int8 - 8位
+- int4 - 4位
+- int1 - 1位
 
-## ML dtype progression
+## ML 数据类型演进
 
-Originally ML was using fp32, but it was very slow.
+最初，ML 使用 fp32，但这非常缓慢。
 
-Next [mixed-precision was invented using a combination of fp16 and fp32](https://developer.nvidia.com/blog/video-mixed-precision-techniques-tensor-cores-deep-learning/) was invented which tremendously sped up the training speed.
+接下来发明了混合精度技术，即使用 fp16 和 fp32 的组合，大大加快了训练速度。
 
-![fp32/fp16 mixed precision](images/mixed-precision-fp16.png)
+![fp32/fp16 混合精度](images/mixed-precision-fp16.png)
 
-([source](https://developer.nvidia.com/blog/video-mixed-precision-techniques-tensor-cores-deep-learning/))
+([来源](https://developer.nvidia.com/blog/video-mixed-precision-techniques-tensor-cores-deep-learning/))
 
-But fp16 proved to be not very stable and training LLM was extremely difficult.
+但 fp16 证明不够稳定，训练大规模语言模型（LLM）极其困难。
 
-Luckily bf16 came out and replaced fp16 using the same mixed precision protocol. This made the LLM training much more stable.
+幸运的是 bf16 出现并使用相同的混合精度协议取代了 fp16。这使得 LLM 训练更加稳定。
 
-Then fp8 came and mixed precision has switched to [that](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html) and which makes the training even faster. See the paper: [FP8 Formats for Deep Learning](https://arxiv.org/abs/2209.05433).
+然后出现了 fp8，并且混合精度切换到了 [该方案](https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html)，使其训练速度更快。请参阅论文：[FP8 格式在深度学习中的应用](https://arxiv.org/abs/2305.16479)。
 
-To appreciate the speed ups between the different formats have a look at this table for NVIDIA A100 TFLOPS spec (w/o sparsity):
+## 训练后改变精度
 
-| Data type              | TFLOPS |
-| :---                   |    --: |
-| FP32                   |   19.5 |
-| Tensor Float 32 (TF32) |    156 |
-| BFLOAT16 Tensor Core   |    312 |
-| FP16 Tensor Core       |    312 |
-| FP8 Tensor Core        |    624 |
-| INT8 Tensor Core       |    624 |
+有时可以在模型训练完成后更改精度。
 
-Each next dtype is about 2x faster than the previous one (except fp32 which is much slower than the rest).
+- 使用预训练的 bf16 模型在 fp16 环境中通常会失败 - 因为 fp16 能表示的最大数值是 64k，可能会导致溢出。有关详细讨论和可能解决方案，请参阅此 [PR](https://github.com/huggingface/transformers/pull/10956)。
 
-In parallel with the mixed training regime the ML community starting coming up with various quantization approaches. Probably one of the best examples is Tim Dettmers' [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) which provides many 4 and 8-bit quantization solutions. The Deepspeed team also has some [interesting quantization solutions](https://www.deepspeed.ai/tutorials/model-compression/).
+- 使用预训练的 fp16 模型在 bf16 环境中通常会工作 - 转换时可能会损失一些性能，但应该可以正常工作 - 最好在其上进行微调再使用。
 
-## TF32
+## 低精度数据类型后的精度变化
 
-TF32 is a magical datatype that is available on NVIDIA GPUs since Ampere, and which allows fp32 `matmul`s performed at a much faster speed than normal fp32 `matmul`s with a small precision loss.
+有时可以在模型训练完成后改变精度。
 
-Here is an example of A100 TFLOPS (w/o sparsity):
+- 使用预训练的 bf16 模型在 fp16 环境中通常会失败 - 因为 fp16 能表示的最大数值是 64k，可能会导致溢出。有关详细讨论和可能解决方案，请参阅此 [PR](https://github.com/huggingface/transformers/pull/10956)。
 
-| Data type              | TFLOPS |
-| :---                   |    --: |
-| FP32                   |   19.5 |
-| Tensor Float 32 (TF32) |    156 |
-
-As you can see TF32 is 8x faster than FP32!
-
-It's disabled by default. To enable it add at the beginning of your program:
-
-```
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-```
-
-For more information about the actual precision loss please see [this](https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices).
+- 使用预训练的 fp16 模型在 bf16 环境中通常会工作 - 转换时可能会损失一些性能，但应该可以正常工作 - 最好在其上进行微调再使用。
 
 
-## When to use fp32 accumulators
+### 低精度下的注意事项
 
-Whenever a low-precision dtype is used one has to be careful not to accumulate intermediary results in that dtype.
+每当使用低精度数据类型时，必须小心不要将中间结果保留在该数据类型中。
 
-`LayerNorm`-like operations must not do their work in half-precision, or they may lose a lot of data. Therefore when  these operations are implemented correctly they do efficient internal work in the dtype of the inputs, but using the fp32 accumulation registers and then their outputs are downcast to the precision of the inputs.
+- 层归一化（LayerNorm）等操作不应在半精度下执行，否则可能会丢失大量数据。因此当这些操作实现正确时，它们会在输入数据类型的 dtype 中高效地进行内部工作，但使用 fp32 积累寄存器，然后将输出降级为输入的精度。
 
-Generally it's just the accumulation that is done in fp32, since adding up many low-precision numbers is very lossy otherwise.
+一般而言，只是积聚运算在 fp32 中完成，因为否则将许多低精度数字相加会非常损失精度。
 
-Here are some examples:
+以下是一些示例：
 
-1. Reduction collectives
+1. 归约集体操作
 
-* fp16: ok to do in fp16 if loss scaling is in place
+   - fp16: 如果有缩放因子可以接受在 fp16 下进行
+   - bf16: 只能在 fp32 下进行
 
-* bf16: only ok in fp32
+2. 梯度累积
 
-2. Gradient accumulation
+   - 对于 fp16 和 bf16，最好在 fp32 下进行，但对于 bf16 必须如此。
 
-* best done in fp32 for fp16 and bf16, but definitely is a must for bf16
+3. 优化器步骤 / 消失的梯度问题
 
-3. Optimizer step / Vanishing gradients
+   - 当向大数值添加一个很小的梯度时，这个加法通常会被抵消。因此通常使用 fp32 主权重和 fp32 优化状态。
+   
+   - 可以在使用 [卡曼求和](https://en.wikipedia.org/wiki/Kahan_summation_algorithm) 或 [随机舍入](https://en.wikipedia.org/wiki/Rounding)（参见论文 [重访 BFloat16 训练](https://arxiv.org/abs/2010.06192)）的情况下使用 fp16 主权重和优化状态。
 
-* when adding a tiny gradient to a large number, that addition is often nullified therefore typically fp32 master weights and fp32 optim states are used.
+对于后者的一个示例，请参阅：[AnyPrecision 优化器](https://github.com/pytorch/torchdistx/pull/52)，最新版本可在此找到 [这里](https://github.com/facebookresearch/multimodal/blob/6bf3779a064dc72cde48793521a5be151695fc62/torchmultimodal/modules/optimizers/anyprecision.py#L17)。
 
-* f16 master weights and optim states can be used when using [Kahan Summation](https://en.wikipedia.org/wiki/Kahan_summation_algorithm)
-or [Stochastic rounding](https://en.wikipedia.org/wiki/Rounding) (introduced in [Revisiting BFloat16 Training](https://arxiv.org/abs/2010.06192)).
+## 训练后更改精度
 
-For an example of the latter see: [AnyPrecision optimizer](https://github.com/pytorch/torchdistx/pull/52) with the latest version found [here](https://github.com/facebookresearch/multimodal/blob/6bf3779a064dc72cde48793521a5be151695fc62/torchmultimodal/modules/optimizers/anyprecision.py#L17).
+有时可以在训练完成后更改精度：
 
+- 使用预训练的 bf16 模型在 fp16 环境中通常会失败 - 因为 fp16 能表示的最大数值是 64k，可能会导致溢出。有关详细讨论和可能解决方案，请参阅此 [PR](https://github.com/huggingface/transformers/pull/10956)。
 
-## Changing precision post training
-
-Sometimes it's OK to change precision after the model was trained.
-
-- Using bf16-pretrained model in fp16 regime usually fails - due to overflows (the biggest number that can be represented in fp16 is 64k) for an indepth discussion and possible workaround see this [PR](https://github.com/huggingface/transformers/pull/10956).
-
-- Using fp16-pretrained model in bf16 regime usually works - it will lose some performance on conversion, but should work - best to finetune a bit before using it.
+- 使用预训练的 fp16 模型在 bf16 环境中通常会工作 - 转换时可能会损失一些性能，但应该可以正常工作 - 最好在其上进行微调再使用。

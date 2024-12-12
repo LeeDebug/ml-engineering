@@ -1,48 +1,38 @@
-# CPU
+### CPU
 
-As of this writing Machine learning workloads don't use much CPU so there aren't too many things to tell in this chapter. As CPUs evolve to become more like GPUs this is like to change, so I'm expecting this chapter to evolve along the evolution of the CPUs.
+截至撰写本文时，机器学习工作负载对CPU的使用量不大，因此本章内容并不多。随着CPU逐渐向GPU靠拢，这种情况可能会改变，因此我预计本章将随着CPU的发展而发展。
 
-## How many cpu cores do you need
+#### 你需要多少个CPU核心
 
-Per 1 accelerator you need:
+对于每块加速器，需要：
 
-1. 1 cpu core per process that is tied to the accelerator
-2. 1 cpu core for each `DataLoader` worker process - and typically you need 2-4 workers.
+1. 每一个与加速器绑定的进程占用1个CPU核心；
+2. 为每个`DataLoader`工作线程占用1个CPU核心——通常需要2到4个工作线程。
 
-2 workers is usually plenty for LMs, especially if the data is already preprocessed.
+2个工作线程通常足够自然语言处理（NLP）模型使用，尤其是当数据已经预处理过的情况下。如果需要进行动态变换，这在计算机视觉模型或VLM中经常发生，可能需要3至4个工作线程，有时甚至更多。
 
-If you need to do dynamic transforms, which is often the case with computer vision models or VLMs, you may need 3-4 and sometimes more workers.
+目标是能够立即从`DataLoader`中拉取数据，并确保不会阻塞加速器的计算能力。这意味着你需要提前为下一迭代处理一批样本，在当前迭代运行的同时。换句话说，你的下一个批次不应比同一大小的批处理所需的单次迭代时间更长。
 
-The goal is to be able to pull from the `DataLoader` instantly, and not block the accelerator's compute, which means that you need to pre-process a bunch of samples for the next iteration, while the current iteration is running. In other words your next batch needs to take no longer than a single iteration accelerator compute of the batch of the same size.
+除了预处理之外，如果你从云端动态拉取数据而不是本地存储的话，还需要确保数据能够快速预获取以供供给工作线程并输入加速器炉膛。
 
-Besides preprocessing if you're pulling dynamically from the cloud instead of local storage you also need to make sure that the data is pre-fetched fast enough to feed the workers that feed the accelerator furnace.
+将上述数量乘以加速器的数量，再添加几个操作系统核心（比如4个）。
 
-Multiply that by the number of accelerators, add a few cores for the Operation system (let's say 4).
+如果节点有8块加速器且你有`n_workers`个，那么你需要 `8*(num_workers+1)+4` 个CPU核心。如果是NLP工作的话，通常每个加速器需要2个工作线程，因此 `8*(2+1)+4` => 28个CPU核心。如果进行计算机视觉训练，并且每个加速器需要4个工作线程，则为 `8*(4+1)+4` => 44个CPU核心。
 
-If the node has 8 accelerators, and you have n_workers, then you need `8*(num_workers+1)+4`. If you're doing NLP, it'd be usually about 2 workers per accelerator, so `8*(2+1)+4` => 28 cpu cores. If you do CV training, and, say, you need 4 workers per accelerator, then it'd be `8(4+1)+4` => 44 cpu cores.
+如果你有许多非常活跃的进程数量超过了总的CPU核心数，一些进程将会被预取（即排队等待CPU核心可用）并绝对避免任何上下文切换。
 
-What happens if you have more very active processes than the total number of cpu cores? Some processes will get preempted (put in the queue for when cpu cores become available) and you absolutely want to avoid any context switching.
+但是现代云服务通常提供50到100多个CPU核心，因此通常有足够的核心可以分配。请参见[异步DataLoader](../../training/performance#asynchronous-dataloader)相关内容。
 
-But modern cloud offerings typically have 50-100+ cpu-cores so usually there is no problem to have enough cores to go around.
+#### CPU卸载
 
-See also [Asynchronous DataLoader](../../training/performance#asynchronous-dataloader).
+一些框架，如 [Deepspeed](https://www.deepspeed.ai/tutorials/zero-offload/) 可以将某些计算工作卸载到CPU上而不会形成瓶颈。在这种情况下，你需要额外的CPU核心。
 
+#### NUMA亲和性
 
+请参见[NUMA亲和性](../../training/performance#numa-affinity)相关内容。
 
-### CPU offload
+#### 超线程
 
-Some frameworks, like [Deepspeed](https://www.deepspeed.ai/tutorials/zero-offload/) can offload some compute work to CPU without creating a bottleneck. In which case you'd want additional cpu-cores.
+[超线程技术](https://en.wikipedia.org/wiki/Hyper-threading)将每个物理核心虚拟化为两个，允许两个线程同时使用同一个CPU核心。根据负载类型的不同，这项特性可能会或可能不会提高整体性能。英特尔——这项技术的发明者——在某些情况下建议最多可获得30%的性能提升。
 
-
-
-## NUMA affinity
-
-See [NUMA affinity](../../training/performance#numa-affinity).
-
-
-
-## Hyperthreads
-
-[Hyper-Threads](https://en.wikipedia.org/wiki/Hyper-threading) double the cpu cores number, by virtualizing each physical core into 2 virtual ones, allowing 2 threads to use the same cpu core at the same time. Depending on the type of workload this feature may or may not increase the overall performance. Intel, the inventor of this technology, suggests a possible 30% performance increase in some situations.
-
-See also [To enable Hyper-Threads or not](../../orchestration/slurm/performance.md#to-enable-hyper-threads-or-not).
+请参见[是否启用超线程](../../orchestration/slurm/performance.md#to-enable-hyper-threads-or-not)相关内容。

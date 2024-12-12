@@ -1,25 +1,22 @@
-# Debugging and Troubleshooting
+# 调试与故障排除
+
+## 指南
+
+- [调试 PyTorch 程序](./pytorch.md)
+
+- [诊断多节点多GPU Python 程序中的挂起和死锁问题](./torch-distributed-hanging-solutions.md)
+
+- [网络调试](../network/debug/)
+
+- [排查 NVIDIA GPU 问题](../compute/accelerator/nvidia/debug.md)
+
+- [检测下溢与上溢](./underflow_overflow.md)
 
 
-## Guides
+## 工具
 
-- [Debugging PyTorch programs](./pytorch.md)
+- [调试工具](./tools.md)
 
-- [Diagnosing Hangings and Deadlocks in Multi-Node Multi-GPU Python Programs](./torch-distributed-hanging-solutions.md)
+- [torch-distributed-gpu-test.py](./torch-distributed-gpu-test.py) - 这是一个用于诊断的 `torch.distributed` 脚本，可以检查集群中的所有 GPU（一个或多个节点）是否能够互相通信并分配 GPU 内存。
 
-- [Network Debug](../network/debug/)
-
-- [Troubleshooting NVIDIA GPUs](../compute/accelerator/nvidia/debug.md)
-
-- [Underflow and Overflow Detection](./underflow_overflow.md)
-
-
-
-## Tools
-
-- [Debug Tools](./tools.md)
-
-- [torch-distributed-gpu-test.py](./torch-distributed-gpu-test.py) - this a `torch.distributed` diagnostics
-  script that checks that all GPUs in the cluster (one or many nodes) can talk to each other and allocate gpu memory.
-
-- [NicerTrace](./NicerTrace.py) - this is an improved `trace` python module with multiple additional flags added to the constructor and more useful output.
+- [NicerTrace](./NicerTrace.py) - 这是一个改进过的 `trace` Python 模块，构造函数中添加了多个额外标志，并且输出更加有用。

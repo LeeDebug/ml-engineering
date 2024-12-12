@@ -1,90 +1,67 @@
-# Accelerator Benchmarks
+# 加速器基准测试
 
-## Maximum Achievable Matmul FLOPS Finder
+## 可达最大矩阵乘法 FLOPS 寻找器
 
-Maximum Achievable Matmul FLOPS (MAMF) Benchmark: [mamf-finder.py](./mamf-finder.py)
+可达最大矩阵乘法（MAMF）基准：[mamf-finder.py](./mamf-finder.py)
 
-For a detailed discussion and the numbers for various accelerators see [Maximum Achievable FLOPS](../#maximum-achievable-flops).
+有关详细讨论和各种加速器的数字，请参见 [可达最大浮点运算次数](../#maximum-achievable-flops)。
 
-While some accelerator manufacturers publish the theoretical TFLOPS these usually can't be reached. As a result of this when we try to optimize our software we have no realistic performance bar to compare ourselves to. The Model FLOPS Utilization (MFU) metric measures TFLOPS achieved against theoretical TFLOPS. Usually when one scores around 50% MFU it's considered a win. But this gives us no indication how far are we from the real achievable throughput.
+虽然一些加速器制造商发布了理论 TFLOPS，但这些数值通常都无法达到。因此，在我们尝试优化软件时，没有现实的性能标准可供比较。模型 FLOPS 利用率（MFU）度量标准测量实际实现的 TFLOPS 对比理论上的 TFLOPS。通常当 MFU 大约在 50% 左右时被认为是成功的。但这并不能告诉我们距离真正的最大吞吐量有多远。
 
-This benchmark scans various large shapes of matmul and reports the highest achievable TFLOPS it registered. As transformers training and partially inference workloads are dominated by large matmul operations it's safe to use the best matmul TFLOPS one can measure on each accelerator as a rough estimation that this is the Maximum Achievable Matmul FLOPS (MAMF). Now instead of the previously used MFU, one can use Model Achievable Matmul FLOPS Utilization (MAMFU).
+此基准会扫描各种大型矩阵乘法形状，并报告它所能记录的最高可达 TFLOPS 值。由于变压器训练和部分推理工作负载主要由大规模矩阵乘法操作主导，可以将每个加速器上测量的最佳矩阵乘法 TFLOPS 作为粗略估计来判断这是可达最大矩阵乘法 FLOPS（MAMF）。现在可以使用模型可达矩阵乘法 FLOPS 利用率（MAMFU）代替之前的 MFU。
 
-Therefore now you can compare the TFLOPS you measured for your training or inference against a realistic number. As you will now be much closer to 100% it'll be much easier to know when to stop optimizing.
+因此现在您可以在实际数值的基础上，将您的训练或推理中测量的 TFLOPS 进行比较。由于您将更加接近 100%，因此在何时停止优化会变得更容易知道。
 
-Currently supported high end architectures:
-- NVIDIA: V100, A100, H100, ...
-- AMD: MI250, MI300X, ...
+目前支持的高端架构：
+- NVIDIA：V100, A100, H100 等
+- AMD：MI250, MI300X 等
 - Intel Gaudi2+
 
-Fairness notes:
-- if you can find a better and more efficient way to detect the best matmul TFLOPS by approaching each new accelerator as a black box, please kindly send a PR with the improvement including the generated log file.
-- also if you know that this benchmark should be run under special conditions to show the best results, such as some kernel settings or similar, please submit a PR to add such special instructions. For example, for AMD MI300X I'm being told disabling the numa_balancing is supposed to help.
+公平性说明：
+- 如果您能找到一种更高效的方法来检测最佳矩阵乘法 TFLOPS，可以将每个新加速器视为黑盒，请提交包含生成的日志文件的改进 PR。
+- 同时如果您知道此基准应以特殊条件运行才能显示最佳结果（例如某些内核设置等），请提交 PR 添加这些特殊的指示。例如，对于 AMD MI300X 我被告知禁用 numa_balancing 可能会有所帮助。
 
-### Architecture specific notes:
+### 建筑特定说明：
 
-Follow the special setup instructions before running the benchmark to achieve the best results:
+在运行基准前，请按照以下特殊设置说明操作以获得更佳效果：
+- **NVIDIA A100 + AMD MI300X**
 
-**MI300x**:
-
-Turn numa_balancing off for better performance:
-```
-sudo sh -c 'echo 0 > /proc/sys/kernel/numa_balancing'
-```
-
-### Examples of usage
-
-In the ranges below `N` is the reduction dimension so that `(MxN)*(NxK)=(MxK)` and we print the MxNxK shape for the best measured TFLOPS.
-
-Also by default we use 50 warmup and 100 measured iterations for each shape and then fastest result is picked (not the average). You can change the number of iterations via the args `--num_warmup_iterations` and `--num_iterations` correspondingly.
-
-You can specify the data type via `--dtype` argument, it has to be one of the valid `torch` dtypes - e.g., `float16`, `bfloat16`, `float32`, etc. If not specified `bfloat16` is used.
-
-Here we do `torch.mm(MxN,NxK) -> MxK`
-
-1. A quick run (under 1min) - should give around 80-90% of the maximum achievable result - good for a quick try out, but not enough to get a high measurement.
-
-```
-./mamf-finder.py --m_range 0 20480 256 --n 4096 --k 4096 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
-```
-
-2. A more exhaustive search (will take much longer) - but you can Ctrl-C it when it run long enough and get the best result so far:
-
-```
+``` 
 ./mamf-finder.py --m_range 0 5376 256 --n_range 0 5376 256 --k_range 0 5376 256 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
 ```
 
-3. A super long exhaustive search (can take many days) - but you can Ctrl-C it when it run long enough and get the best result so far:
+- **NVIDIA H100**
 
-```
+``` 
 ./mamf-finder.py --m_range 0 20480 256 --n_range 0 20480 256 --k_range 0 20480 256 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
 ```
 
-4. If you want to measure a specific shape that is used by your training, use the exact shape, instead of the range, so let's say you wanted to measure 1024x1024x1024 - you'd run:
+要更好地了解特定加速器下哪个形状能给出最高的矩阵乘法 FLOPS，请参阅 [向量和矩阵大小的整除性](../../../training/performance/README.md#vector-and-matrix-size-divisibility)。
 
-```
+### 结果
+
+截至目前我收集到的测量结果可以在 [可达最大矩阵乘法 FLOPS 对比表](../#maximum-achievable-matmul-flops-comparison-table) 中找到。当我拥有特定加速器访问权限时，我会亲自运行基准测试；而在我没有这些条件的情况下，则是热心贡献者花费时间获取了这些数字。因此我非常感激 [那些人](../../../contributors.md)。
+
+### 示例
+
+1. 如果您想测量由您的训练所使用的特定形状，使用确切的形状而不是范围，比如 1024x1024x1024，可以运行：
+
+``` 
 ./mamf-finder.py --m 1024 --n 1024 --k 1024 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
 ```
 
-5. Accelerator specific range seeking suggestions
+2. 如果您想要测量特定形状，例如 512x512x512，可以运行：
 
-But then it appears that different accelerators have different ranges of shapes that lead to best TFLOPS, thus it's difficult to suggest a range that will work well for all of them - instead here are some suggestions based on experiments and suggestions from contributors:
-
-- **A100** + **MI300X**
-
-```
-./mamf-finder.py --m_range 0 5376 256 --n_range 0 5376 256 --k_range 0 5376 256 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
+``` 
+./mamf-finder.py --m 512 --n 512 --k 512 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
 ```
 
-- **H100**
+3. 如果您想测量 1024x1024 的固定形状，可以运行：
 
+``` 
+./mamf-finder.py --m 1024 --n 1024 --k_range 512 2048 256 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
 ```
-./mamf-finder.py --m_range 0 20480 256 --n_range 0 20480 256 --k_range 0 20480 256 --output_file=$(date +"%Y-%m-%d-%H:%M:%S").txt
-```
 
-To understand better which shapes give the highest matmul FLOPS for a particular accelerator, see [Vector and matrix size divisibility](../../../training/performance/README.md#vector-and-matrix-size-divisibility).
+这些示例演示了如何使用 `mamf-finder.py` 脚本进行特定形状的测量。
 
-
-### Results
-
-The measurements that I have gathered so far can be found at [Maximum Achievable Matmul FLOPS comparison table](../#maximum-achievable-matmul-flops-comparison-table). When I had access to a particular accelerator I run the benchmarks myself, when I didn't it was the kind contributors who invested their time to get these numbers. So I'm very grateful to [those](../../../contributors.md).
+希望这些信息对您有帮助！如果有任何其他问题或需要进一步的帮助，请随时告诉我。
